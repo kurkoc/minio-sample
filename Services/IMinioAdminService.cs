@@ -15,10 +15,15 @@ public interface IMinioAdminService
     Task<Result> EnableUser(string username);
     Task<Result> AddUser(string username, string password);
     Task<Result> DeleteUser(string username);
-
     Task<Result> AddUsersToGroup(string groupName, List<string> users);
+    
+    
     Task<Result<List<string>>> GetGroups();
     Task<Result<MinioGroup>> GetGroup(string groupName);
+    Task<Result> DisableGroup(string groupName);
+    Task<Result> EnableGroup(string groupName);
+    Task<Result> DeleteGroup(string groupName);
+    
     Task<Result> AttachPolicyToUser(string policy, string user);
     Task<Result> CreatePolicyAsync(string policyName, string policyJson);
     Task<Result> CreateDefaultPolicyAndAttachUser(string username, string bucketName);

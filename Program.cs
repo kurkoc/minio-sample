@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddMinio(configureClient =>
 {
     configureClient.WithEndpoint("localhost:9000")
-            .WithCredentials("Il7YqdYxbIlqaPqS8vM9", "YoxHhslBdMtm5wKG91wnfkibWkY9q9IOq5mHyZ3J")
+            .WithCredentials("FOUGZUQZ1NTTXYPHA28H", "NvPK4bn8s+NbR0hpcFeq9VeV7G6WFTDvnTlPIY88")
             .WithSSL(false)
             .Build();
 });
@@ -87,20 +87,20 @@ app.MapGet("users/{username}", async ([FromServices] IMinioAdminService minioAdm
 
 app.MapPatch("users/{username}/disable", async ([FromServices] IMinioAdminService minioAdminService, [FromRoute] string username) =>
 {
-    var user = await minioAdminService.DisableUser(username);
-    return user.IsFailed ? Results.BadRequest(user.Errors[0].Message) : Results.Ok();
+    var result = await minioAdminService.DisableUser(username);
+    return result.IsFailed ? Results.BadRequest(result.Errors[0].Message) : Results.Ok();
 });
 
 app.MapPatch("users/{username}/enable", async ([FromServices] IMinioAdminService minioAdminService, [FromRoute] string username) =>
 {
-    var user = await minioAdminService.EnableUser(username);
-    return user.IsFailed ? Results.BadRequest(user.Errors[0].Message) : Results.Ok();
+    var result = await minioAdminService.EnableUser(username);
+    return result.IsFailed ? Results.BadRequest(result.Errors[0].Message) : Results.Ok();
 });
 
 app.MapDelete("users/{username}", async ([FromServices] IMinioAdminService minioAdminService, [FromRoute] string username) =>
 {
-    var user = await minioAdminService.DeleteUser(username);
-    return user.IsFailed ? Results.BadRequest(user.Errors[0].Message) : Results.Ok();
+    var result = await minioAdminService.DeleteUser(username);
+    return result.IsFailed ? Results.BadRequest(result.Errors[0].Message) : Results.Ok();
 });
 
 
@@ -143,6 +143,24 @@ app.MapPost("groups", async ([FromServices] IMinioAdminService minioAdminService
 
     return Results.Ok();
 
+});
+
+app.MapPatch("groups/{groupName}/disable", async ([FromServices] IMinioAdminService minioAdminService, [FromRoute] string groupName) =>
+{
+    var result = await minioAdminService.DisableGroup(groupName);
+    return result.IsFailed ? Results.BadRequest(result.Errors[0].Message) : Results.Ok();
+});
+
+app.MapPatch("groups/{groupName}/enable", async ([FromServices] IMinioAdminService minioAdminService, [FromRoute] string groupName) =>
+{
+    var result = await minioAdminService.EnableGroup(groupName);
+    return result.IsFailed ? Results.BadRequest(result.Errors[0].Message) : Results.Ok();
+});
+
+app.MapDelete("groups/{groupName}", async ([FromServices] IMinioAdminService minioAdminService, [FromRoute] string groupName) =>
+{
+    var result = await minioAdminService.DeleteGroup(groupName);
+    return result.IsFailed ? Results.BadRequest(result.Errors[0].Message) : Results.Ok();
 });
 
 app.Run();

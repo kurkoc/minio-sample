@@ -13,7 +13,7 @@ public class MinioAdminService : IMinioAdminService
     private readonly string _alias;
     private readonly IMinioClient _minioClient;
 
-    public MinioAdminService(IMinioClient minioClient, string mcPath = "mc", string alias = "mys3")
+    public MinioAdminService(IMinioClient minioClient, string mcPath = "mc", string alias = "docker_minio")
     {
         _minioClient = minioClient;
         _mcPath = mcPath;
@@ -39,6 +39,8 @@ public class MinioAdminService : IMinioAdminService
             return Result.Fail(ex.Message);
         }
     }
+
+    #region User
     public async Task<Result<List<MinioUser>>> GetUsers()
     {
         string args = $"admin user ls {_alias} --json";
@@ -88,8 +90,16 @@ public class MinioAdminService : IMinioAdminService
     {
         string args = $"admin user rm {_alias} {username}";
         var result = await RunProcessAsync(args);
-        return Helpers.ResultHelper.ConvertToResult(result);
+
+        if (!result.IsFailed) return Result.Ok();
+        
+        var error =  JsonLinesParser.Parse<MinioError>(result.Errors[0].Message);
+        return Result.Fail(error.Error.Message);
+
     }
+    
+    
+    #endregion
 
     public async Task<Result> AddUsersToGroup(string groupName, List<string> users)
     {
@@ -104,9 +114,8 @@ public class MinioAdminService : IMinioAdminService
         var result = await RunProcessAsync(args);
         return Helpers.ResultHelper.ConvertToResult(result);
     }
-    
-    
-    
+
+    #region Group
     public async Task<Result<List<string>>> GetGroups()
     {
         string args = $"admin group ls {_alias} --json";
@@ -127,9 +136,37 @@ public class MinioAdminService : IMinioAdminService
 
         var groupResult = JsonLinesParser.Parse<MinioGroup>(result.Value);
         return Result.Ok(groupResult);
-
+    }
+    
+    public async Task<Result> DisableGroup(string groupName)
+    {
+        //mc admin group disable mys3 hbs
+        string args = $"admin group disable {_alias} {groupName}";
+        var result = await RunProcessAsync(args);
+        return Helpers.ResultHelper.ConvertToResult(result);
     }
 
+    public async Task<Result> EnableGroup(string groupName)
+    {
+        //mc admin user disable mys3 hbs
+        string args = $"admin group enable {_alias} {groupName}";
+        var result = await RunProcessAsync(args);
+        return Helpers.ResultHelper.ConvertToResult(result);
+    }
+    
+    public async Task<Result> DeleteGroup(string groupName)
+    {
+        string args = $"admin group rm {_alias} {groupName} --json";
+        var result = await RunProcessAsync(args);
+        
+        if (!result.IsFailed) return Result.Ok();
+        
+        var error =  JsonLinesParser.Parse<MinioError>(result.Errors[0].Message);
+        return Result.Fail(error.Error.Cause.Message);
+        
+    }
+
+    #endregion
     public async Task<Result> CreateDefaultPolicyAndAttachUser(string username, string bucketName)
     {
         string policyJson = $$"""
