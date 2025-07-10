@@ -3,7 +3,7 @@ using FluentResults;
 using Minio;
 using Minio.DataModel.Args;
 using Minio.Exceptions;
-using MinioSample.Dtos;
+using MinioSample.Models;
 
 namespace MinioSample.Services;
 
@@ -13,7 +13,7 @@ public class MinioAdminService : IMinioAdminService
     private readonly string _alias;
     private readonly IMinioClient _minioClient;
 
-    public MinioAdminService(IMinioClient minioClient, string mcPath = "/opt/homebrew/bin/mc", string alias = "local")
+    public MinioAdminService(IMinioClient minioClient, string mcPath = "mc", string alias = "mys3")
     {
         _minioClient = minioClient;
         _mcPath = mcPath;
@@ -39,22 +39,58 @@ public class MinioAdminService : IMinioAdminService
             return Result.Fail(ex.Message);
         }
     }
-    public async Task<Result<List<string>>> GetUsers()
+    public async Task<Result<List<MinioUser>>> GetUsers()
     {
-        string args = $"admin user ls {_alias}";
+        string args = $"admin user ls {_alias} --json";
         var result = await RunProcessAsync(args);
         
         if (result.IsFailed) return Result.Fail(result.Errors[0].Message);
-        
-        var users = result.Value.Split("\n").Where(q=>!string.IsNullOrEmpty(q)).ToList();
+
+        var users = JsonLinesParser.ParseMany<MinioUser>(result.Value);
         return Result.Ok(users);
     }
+
+    public async Task<Result<MinioUser?>> GetUser(string username)
+    {
+        string args = $"admin user info {_alias} {username} --json";
+        var result = await RunProcessAsync(args);
+
+        if (result.IsFailed) return Result.Fail(result.Errors[0].Message);
+
+        var user = JsonLinesParser.Parse<MinioUser>(result.Value);
+        return Result.Ok(user);
+    }
+
+    public async Task<Result> DisableUser(string username)
+    {
+        //mc admin user disable mys3 hbs
+        string args = $"admin user disable {_alias} {username}";
+        var result = await RunProcessAsync(args);
+        return Helpers.ResultHelper.ConvertToResult(result);
+    }
+
+    public async Task<Result> EnableUser(string username)
+    {
+        //mc admin user disable mys3 hbs
+        string args = $"admin user enable {_alias} {username}";
+        var result = await RunProcessAsync(args);
+        return Helpers.ResultHelper.ConvertToResult(result);
+    }
+
     public async Task<Result> AddUser(string username, string password)
     {
         string args = $"admin user add {_alias} {username} {password}";
         var result = await RunProcessAsync(args);
         return Helpers.ResultHelper.ConvertToResult(result);
     }
+
+    public async Task<Result> DeleteUser(string username)
+    {
+        string args = $"admin user rm {_alias} {username}";
+        var result = await RunProcessAsync(args);
+        return Helpers.ResultHelper.ConvertToResult(result);
+    }
+
     public async Task<Result> AddUsersToGroup(string groupName, List<string> users)
     {
         string userLine = string.Join(" ", users);
@@ -68,31 +104,30 @@ public class MinioAdminService : IMinioAdminService
         var result = await RunProcessAsync(args);
         return Helpers.ResultHelper.ConvertToResult(result);
     }
+    
+    
+    
     public async Task<Result<List<string>>> GetGroups()
     {
-        string args = $"admin group ls {_alias}";
+        string args = $"admin group ls {_alias} --json";
         var result = await RunProcessAsync(args);
         
         if (result.IsFailed) return Result.Fail(result.Errors[0].Message);
-        
-        var groups = result.Value.Split("\n").Where(q=>!string.IsNullOrEmpty(q)).ToList();
-        return Result.Ok(groups);
+
+        var groupResult = JsonLinesParser.Parse<MinioGroupListModel>(result.Value);
+
+        return Result.Ok(groupResult?.Groups);
     }
-    public async Task<Result<GroupInfoDto>> GetGroup(string groupName)
+    public async Task<Result<MinioGroup>> GetGroup(string groupName)
     {
-        string args = $"admin group info {_alias} {groupName}";
+        string args = $"admin group info {_alias} {groupName} --json";
         var result =  await RunProcessAsync(args);
         
         if (result.IsFailed) return Result.Fail(result.Errors[0].Message);
-        
-        var groupInfo = result.Value.Split("\n").ToList();
-        return Result.Ok(new GroupInfoDto()
-        {
-            Name = groupInfo[0].Trim().Replace("Group: ",""),
-            Status = groupInfo[1].Trim().Replace("Status: ",""),
-            Policies = groupInfo[2].Trim().Replace("Policy: ",""),
-            Members = groupInfo[3].Trim().Replace("Members: ","")
-        });
+
+        var groupResult = JsonLinesParser.Parse<MinioGroup>(result.Value);
+        return Result.Ok(groupResult);
+
     }
 
     public async Task<Result> CreateDefaultPolicyAndAttachUser(string username, string bucketName)
@@ -117,8 +152,13 @@ public class MinioAdminService : IMinioAdminService
 
         string policyName = $"{username}-policy";
         var policyResult = await CreatePolicyAsync(policyName, policyJson);
-        
-        return await AttachPolicyToUser(policyName, username);
+
+        if (policyResult.IsSuccess)
+        {
+            await AttachPolicyToUser(policyName, username);
+        }
+
+        return Result.Ok();
     }
 
     public async Task<Result> CreatePolicyAsync(string policyName, string policyJson)

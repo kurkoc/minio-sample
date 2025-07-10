@@ -6,11 +6,14 @@ using MinioSample.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddMinio(configureClient => configureClient
-    .WithEndpoint("localhost:9000")
-    .WithCredentials("vCndFcDrSWPuhazfAZr7", "gW5SJYEbHkHvwOzNoxymfzx7Xv7cXTBmIEmM9jM1")
-    .WithSSL(false)
-    .Build());
+
+builder.Services.AddMinio(configureClient =>
+{
+    configureClient.WithEndpoint("localhost:9000")
+            .WithCredentials("Il7YqdYxbIlqaPqS8vM9", "YoxHhslBdMtm5wKG91wnfkibWkY9q9IOq5mHyZ3J")
+            .WithSSL(false)
+            .Build();
+});
 
 builder.Services.AddScoped<IMinioAdminService, MinioAdminService>();
 
@@ -74,6 +77,30 @@ app.MapGet("users", async ([FromServices] IMinioAdminService minioAdminService) 
 {
     var groups = await minioAdminService.GetUsers();
     return groups.IsFailed ? Results.BadRequest(groups.Errors[0].Message) : Results.Ok(groups.Value);
+});
+
+app.MapGet("users/{username}", async ([FromServices] IMinioAdminService minioAdminService, [FromRoute] string username) =>
+{
+    var user = await minioAdminService.GetUser(username);
+    return user.IsFailed ? Results.BadRequest(user.Errors[0].Message) : Results.Ok(user.Value);
+});
+
+app.MapPatch("users/{username}/disable", async ([FromServices] IMinioAdminService minioAdminService, [FromRoute] string username) =>
+{
+    var user = await minioAdminService.DisableUser(username);
+    return user.IsFailed ? Results.BadRequest(user.Errors[0].Message) : Results.Ok();
+});
+
+app.MapPatch("users/{username}/enable", async ([FromServices] IMinioAdminService minioAdminService, [FromRoute] string username) =>
+{
+    var user = await minioAdminService.EnableUser(username);
+    return user.IsFailed ? Results.BadRequest(user.Errors[0].Message) : Results.Ok();
+});
+
+app.MapDelete("users/{username}", async ([FromServices] IMinioAdminService minioAdminService, [FromRoute] string username) =>
+{
+    var user = await minioAdminService.DeleteUser(username);
+    return user.IsFailed ? Results.BadRequest(user.Errors[0].Message) : Results.Ok();
 });
 
 
